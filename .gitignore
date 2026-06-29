@@ -1,0 +1,22 @@
+# Local Python environments and caches
+.venv/
+__pycache__/
+
+# Secrets and local configuration
+.env
+kaggle.json
+.kaggle/
+
+# H&M source archives and generated data
+*.zip
+backend/data/raw/
+backend/data/sample/images/
+backend/data/sample/transactions_sample.csv
+backend/data/vector_store/
+backend/data/sqlite/
+*.db
+*.sqlite
+
+# Frontend dependencies and build output
+node_modules/
+dist/

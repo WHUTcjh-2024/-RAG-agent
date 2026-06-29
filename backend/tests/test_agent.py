@@ -1,0 +1,138 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+from langchain_core.tools import BaseTool
+
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+from app.api.chat import get_orchestrator
+from app.core.agent.orchestrator import ShoppingAgentOrchestrator
+from app.core.llm import (
+    GroundedRecommendation,
+    GroundedRecommendationGenerator,
+    ProductReason,
+)
+from app.core.retrieval.hybrid_retriever import HybridRetriever
+from app.core.retrieval.image_retriever import ImageRetriever
+from app.core.retrieval.text_retriever import TextRetriever
+from app.main import app
+from tests.test_hybrid_retrieval import build_fixture_indexes
+
+
+def create_orchestrator(root: Path) -> ShoppingAgentOrchestrator:
+    text_index, image_index, _ = build_fixture_indexes(root)
+    return ShoppingAgentOrchestrator(
+        text_retriever=TextRetriever(text_index),
+        image_retriever=ImageRetriever(image_index, device="cpu"),
+        hybrid_retriever=HybridRetriever(text_index, image_index, image_device="cpu"),
+    )
+
+
+def test_registry_contains_real_langchain_tools(tmp_path: Path) -> None:
+    orchestrator = create_orchestrator(tmp_path)
+    assert len(orchestrator.registry.tools) == 10
+    assert all(isinstance(tool, BaseTool) for tool in orchestrator.registry.tools)
+    assert "hybrid_search" in orchestrator.registry.names
+    assert "checkout" in orchestrator.registry.names
+
+
+def test_agent_recommend_compare_cart_and_checkout(tmp_path: Path) -> None:
+    orchestrator = create_orchestrator(tmp_path)
+    session_id = "agent-flow"
+
+    assert orchestrator.slot_extractor.extract("推荐一件红色衬衫") == {
+        "color": "Red",
+        "category": "Shirt",
+    }
+    recommendation = orchestrator.handle("推荐两件衬衫", session_id)
+    assert recommendation.intent == "text_recommendation"
+    assert recommendation.products
+    assert len(recommendation.products) == 2
+    assert recommendation.slots["category"] == "Shirt"
+    assert any(trace.tool == "search_products_by_text" for trace in recommendation.tool_trace)
+
+    comparison = orchestrator.handle("对比第1件和第2件", session_id)
+    assert comparison.intent == "compare"
+    assert len(comparison.comparison) == 2
+
+    first_id = recommendation.products[0]["article_id"]
+    cart = orchestrator.handle("把第1件加入购物车", session_id)
+    assert cart.intent == "add_to_cart"
+    assert [item["article_id"] for item in cart.cart] == [first_id]
+
+    viewed = orchestrator.handle("查看购物车", session_id)
+    assert len(viewed.cart) == 1
+
+    checkout = orchestrator.handle("结算并模拟下单", session_id)
+    assert checkout.order is not None
+    assert checkout.order["status"] == "simulated"
+    assert checkout.order["items"][0]["article_id"] == first_id
+
+    empty_cart = orchestrator.handle("查看购物车", session_id)
+    assert empty_cart.cart == []
+
+
+class FakeHallucinatingChain:
+    def invoke(self, inputs):
+        return GroundedRecommendation(
+            intro="候选推荐",
+            recommendations=[
+                ProductReason(article_id="9999999999", reason="虚构商品"),
+                ProductReason(article_id="0000000001", reason="真实候选商品理由"),
+            ],
+        )
+
+
+def test_llm_product_id_whitelist_drops_hallucinations() -> None:
+    generator = GroundedRecommendationGenerator(chain=FakeHallucinatingChain())
+    intro, reasons = generator.generate(
+        user_query="推荐红色衬衫",
+        products=[
+            {
+                "article_id": "0000000001",
+                "prod_name": "Red Shirt",
+                "product_type_name": "Shirt",
+                "colour_group_name": "Red",
+            }
+        ],
+        slots={"color": "Red", "category": "Shirt"},
+        history=[],
+    )
+    assert intro == "候选推荐"
+    assert reasons == {"0000000001": "真实候选商品理由"}
+    assert "9999999999" not in reasons
+
+
+def test_chat_api_and_sse_tool_trace(tmp_path: Path, monkeypatch) -> None:
+    text_index, image_index, _ = build_fixture_indexes(tmp_path)
+    monkeypatch.setenv("TEXT_INDEX_DIR", str(text_index))
+    monkeypatch.setenv("IMAGE_INDEX_DIR", str(image_index))
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    get_orchestrator.cache_clear()
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/chat",
+            data={"message": "推荐一件红色衬衫", "session_id": "api-agent"},
+        )
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload["products"][0]["article_id"] == "0000000001"
+        assert payload["tool_trace"][-1]["tool"] == "search_products_by_text"
+
+        stream = client.post(
+            "/api/chat/stream",
+            data={"message": "查看购物车", "session_id": "api-agent"},
+        )
+        assert stream.status_code == 200
+        assert "event: meta" in stream.text
+        assert "event: tool" in stream.text
+        assert "event: done" in stream.text
+    get_orchestrator.cache_clear()
