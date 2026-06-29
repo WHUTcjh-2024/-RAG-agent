@@ -20,3 +20,5 @@ backend/data/sqlite/
 # Frontend dependencies and build output
 node_modules/
 dist/
+frontend/test-results/
+frontend/playwright-report/

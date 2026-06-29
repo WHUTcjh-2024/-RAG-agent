@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image
 
 from app.core.image_encoder import create_image_encoder
+from app.core.catalog_fields import enrich_commerce_fields
 from app.core.retrieval.filters import product_matches_filters
 
 
@@ -85,5 +86,5 @@ class ImageRetriever:
             product = dict(self.products[product_index])
             product["score"] = round(float(scores[local_index]), 6)
             product["reason"] = "上传图片视觉相似度与结构化筛选匹配"
-            results.append(product)
+            results.append(enrich_commerce_fields(product))
         return results, total_candidates

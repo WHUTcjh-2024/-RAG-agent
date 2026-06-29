@@ -1,0 +1,10 @@
+{
+  "verified_at": "2026-06-29T13:19:55.040726+00:00",
+  "planner_intent": "text_recommendation",
+  "tool_call_ok": true,
+  "structured_generation_ok": true,
+  "grounded_ids": [
+    "0100000001"
+  ],
+  "grounding_ok": true
+}

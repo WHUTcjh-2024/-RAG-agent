@@ -113,14 +113,21 @@ npm run dev
 $env:LLM_BASE_URL="https://api.example.com/v1"
 $env:LLM_API_KEY="your-api-key"
 $env:LLM_MODEL="your-model-name"
+$env:LLM_THINKING="disabled"
+$env:LLM_ENABLED="true"
 ```
 
 LLM 可选择允许的 LangChain 工具，并只接收检索候选商品；所有工具参数仍由服务端校验，商品卡片由真实目录生成，模型返回的非候选商品 ID 会被丢弃。
+
+DeepSeek V4 Flash 使用 `LLM_BASE_URL=https://api.deepseek.com` 和 `LLM_MODEL=deepseek-v4-flash`。工具规划默认关闭思考模式，因为 DeepSeek 思考模式不接受 `tool_choice=required`。配置保存在本地 `.env`，不会进入 Git。
 
 ## 7. 测试
 
 ```powershell
 python -m pytest backend\tests -q
+
+python backend\scripts\evaluate_recommendations.py
+python backend\scripts\verify_llm.py
 
 python backend\scripts\validate_real_retrieval.py `
   --sample_csv backend\data\sample\product_profiles.csv `
@@ -131,8 +138,13 @@ python backend\scripts\validate_real_retrieval.py `
 
 cd frontend
 npm test
+npm run test:e2e
 npm run build
 ```
+
+评测集位于 `backend/evaluation/cases.json`，包含 62 条文本自检索、意图和偏好抽取用例；报告写入 `backend/evaluation/report.json`。脚本会对 Recall@5、意图准确率和槽位准确率执行质量门禁。
+
+商品响应中的 `sku` 使用真实 `article_id`，`price_info` 明确标记归一化价格及来源。H&M 数据源没有尺码和实时库存，因此返回 `available_sizes=[]`、`inventory_status=unknown`，前端明确展示“数据源未提供”。
 
 ## 8. Docker 部署
 

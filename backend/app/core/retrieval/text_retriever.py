@@ -8,6 +8,7 @@ import numpy as np
 
 from app.core.retrieval.filters import product_matches_filters
 from app.core.text_encoder import create_text_encoder
+from app.core.catalog_fields import enrich_commerce_fields
 
 
 class TextRetriever:
@@ -85,5 +86,5 @@ class TextRetriever:
             product = dict(self.products[product_index])
             product["score"] = round(float(scores[local_index]), 6)
             product["reason"] = "文本语义相似度与结构化筛选匹配"
-            results.append(product)
+            results.append(enrich_commerce_fields(product))
         return results, total_candidates

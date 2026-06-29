@@ -9,6 +9,10 @@ export interface Product {
   image_path?: string;
   image_url?: string;
   price?: number | null;
+  price_info?: { amount: number; currency: string; source: string } | null;
+  sku?: string;
+  available_sizes?: string[];
+  inventory_status?: "in_stock" | "out_of_stock" | "unknown";
   popularity_score?: number;
   score?: number;
   reason?: string;

@@ -9,6 +9,7 @@ from PIL import Image
 from app.core.retrieval.filters import product_matches_filters, structured_match_score
 from app.core.retrieval.image_retriever import ImageRetriever
 from app.core.retrieval.text_retriever import TextRetriever
+from app.core.catalog_fields import enrich_commerce_fields
 
 
 TEXT_WEIGHT = 0.30
@@ -164,5 +165,5 @@ class HybridRetriever:
                     ),
                 }
             )
-            results.append(product)
+            results.append(enrich_commerce_fields(product))
         return results, total_candidates

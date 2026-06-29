@@ -11,6 +11,7 @@ if str(BACKEND_DIR) not in sys.path:
 from app.core.agent.memory import AgentMemoryStore
 from app.core.agent.slot_extractor import SlotExtractor
 from app.core.retrieval.filters import product_matches_filters, structured_match_score
+from app.core.catalog_fields import enrich_commerce_fields
 
 
 def test_preferences_drive_semantics_budget_and_exclusions() -> None:
@@ -43,3 +44,15 @@ def test_memory_survives_store_recreation(tmp_path: Path) -> None:
     assert restored.slots == {"color": "Red"}
     assert restored.cart == ["0000000001"]
     assert restored.history.messages[0].content == "红色衬衫"
+
+
+def test_commerce_fields_are_explicit_without_fabricated_inventory() -> None:
+    product = enrich_commerce_fields({"article_id": "0000000001", "price": "0.05"})
+    assert product["sku"] == "0000000001"
+    assert product["price_info"] == {
+        "amount": 0.05,
+        "currency": "H&M_DATASET_NORMALIZED",
+        "source": "transactions_train.mean",
+    }
+    assert product["available_sizes"] == []
+    assert product["inventory_status"] == "unknown"

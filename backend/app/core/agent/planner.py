@@ -22,6 +22,9 @@ class AgentPlanner:
     """Optional LLM tool selector with a deterministic, offline-safe fallback."""
 
     def __init__(self, tools: list) -> None:
+        if os.getenv("LLM_ENABLED", "true").strip().casefold() not in {"1", "true", "yes"}:
+            self.bound = None
+            return
         api_key = os.getenv("LLM_API_KEY", "").strip()
         model = os.getenv("LLM_MODEL", "").strip()
         self.bound = None
@@ -32,6 +35,10 @@ class AgentPlanner:
                 base_url=os.getenv("LLM_BASE_URL", "").strip() or None,
                 temperature=0,
                 max_retries=1,
+                request_timeout=30,
+                extra_body={
+                    "thinking": {"type": os.getenv("LLM_THINKING", "disabled")}
+                },
             )
             action_tools = [tool for tool in tools if tool.name in TOOL_TO_INTENT]
             self.bound = llm.bind_tools(action_tools, tool_choice="required")

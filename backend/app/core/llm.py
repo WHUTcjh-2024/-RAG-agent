@@ -31,6 +31,8 @@ class GroundedRecommendationGenerator:
         self.chain = chain if chain is not None else self._create_chain_from_env()
 
     def _create_chain_from_env(self):
+        if os.getenv("LLM_ENABLED", "true").strip().casefold() not in {"1", "true", "yes"}:
+            return None
         api_key = os.getenv("LLM_API_KEY", "").strip()
         model = os.getenv("LLM_MODEL", "").strip()
         if not api_key or not model:
@@ -42,6 +44,10 @@ class GroundedRecommendationGenerator:
             base_url=base_url,
             temperature=0,
             max_retries=2,
+            request_timeout=30,
+            extra_body={
+                "thinking": {"type": os.getenv("LLM_THINKING", "disabled")}
+            },
         )
         prompt = ChatPromptTemplate.from_messages(
             [

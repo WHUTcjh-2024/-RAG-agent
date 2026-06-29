@@ -5,6 +5,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from app.core.catalog_fields import enrich_commerce_fields
+
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "sqlite" / "app.db"
 
@@ -31,4 +33,4 @@ def product_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     product["image_url"] = (
         "/media/" + relative.removeprefix("images/") if relative else ""
     )
-    return product
+    return enrich_commerce_fields(product)

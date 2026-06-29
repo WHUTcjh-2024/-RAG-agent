@@ -84,7 +84,12 @@ export function ProductDetailDrawer({ open, product, onClose, onAdd }: { open: b
         <h3 className="mt-2 font-display text-3xl">{product.prod_name}</h3>
         <p className="mt-3 text-xs text-muted">{product.product_type_name} · {product.colour_group_name} · {product.garment_group_name}</p>
         <p className="mt-6 text-sm leading-7">{product.detail_desc || "暂无商品描述"}</p>
-        {typeof product.price === "number" && <p className="mt-5 text-xs text-muted">数据集价格：{product.price.toFixed(6)}</p>}
+        <dl className="mt-5 space-y-2 border-t border-ink/10 pt-4 text-xs">
+          <div className="flex justify-between"><dt className="text-muted">SKU</dt><dd>{product.sku || product.article_id}</dd></div>
+          <div className="flex justify-between"><dt className="text-muted">库存</dt><dd>{product.inventory_status === "unknown" ? "数据源未提供" : product.inventory_status}</dd></div>
+          <div className="flex justify-between"><dt className="text-muted">尺码</dt><dd>{product.available_sizes?.length ? product.available_sizes.join(" / ") : "数据源未提供"}</dd></div>
+          {product.price_info && <div className="flex justify-between"><dt className="text-muted">数据集价格</dt><dd>{product.price_info.amount.toFixed(6)} {product.price_info.currency}</dd></div>}
+        </dl>
         <button onClick={() => onAdd(product.article_id)} className="mt-8 w-full bg-accent px-5 py-4 text-xs uppercase tracking-[0.2em] text-white">加入购物袋</button>
       </div>}
     </Shell>

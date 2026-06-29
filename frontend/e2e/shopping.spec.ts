@@ -1,0 +1,104 @@
+import { expect, test, type Page } from "@playwright/test";
+
+const products = [
+  {
+    article_id: "0000000001", sku: "0000000001", prod_name: "White Office Shirt",
+    product_type_name: "Shirt", colour_group_name: "White", garment_group_name: "Blouses",
+    detail_desc: "Cotton shirt for office wear.", image_url: "/media/one.jpg", price: 0.05,
+    price_info: { amount: 0.05, currency: "H&M_DATASET_NORMALIZED", source: "transactions_train.mean" },
+    available_sizes: [], inventory_status: "unknown", popularity_score: 1
+  },
+  {
+    article_id: "0000000002", sku: "0000000002", prod_name: "Black Evening Dress",
+    product_type_name: "Dress", colour_group_name: "Black", garment_group_name: "Dresses",
+    detail_desc: "Simple evening dress.", image_url: "/media/two.jpg", price: 0.08,
+    price_info: { amount: 0.08, currency: "H&M_DATASET_NORMALIZED", source: "transactions_train.mean" },
+    available_sizes: ["S", "M"], inventory_status: "in_stock", popularity_score: 0.8
+  }
+];
+
+async function mockApi(page: Page, restoredCart: typeof products = []) {
+  await page.route("**/media/**", route => route.fulfill({
+    contentType: "image/svg+xml",
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="40"><rect width="30" height="40" fill="#ddd"/></svg>'
+  }));
+  await page.route("**/api/products/facets", route => route.fulfill({ json: {
+    categories: ["Dress", "Shirt"], colors: ["Black", "White"],
+    index_groups: ["Ladieswear"], price_range: [0.05, 0.08]
+  }}));
+  await page.route("**/api/session", route => route.fulfill({ json: {
+    session_id: "e2e", slots: {}, cart: restoredCart, history: []
+  }}));
+  await page.route(/\/api\/products\?.*/, route => route.fulfill({ json: {
+    page: Number(new URL(route.request().url()).searchParams.get("page") || 1),
+    page_size: 12, total: 24, items: products
+  }}));
+  await page.route(/\/api\/products\/\d+$/, route => {
+    const id = route.request().url().split("/").at(-1);
+    route.fulfill({ json: products.find(item => item.article_id === id) });
+  });
+}
+
+test("browse, filter, paginate and inspect honest commerce fields", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/");
+  await expect(page.getByText("White Office Shirt").first()).toBeVisible();
+  await page.getByPlaceholder("搜索商品名称或描述").fill("office");
+  await page.getByLabel("分类").selectOption("Shirt");
+  await page.getByLabel("颜色").selectOption("White");
+  await expect.poll(() => page.url()).toContain("127.0.0.1");
+  await page.getByRole("button", { name: "下一页" }).click();
+  await expect(page.getByText("第 2 / 2 页")).toBeVisible();
+  await page.getByRole("button", { name: "查看 White Office Shirt 详情" }).click();
+  await expect(page.getByText("商品详情")).toBeVisible();
+  await expect(page.getByText(/^0\.050000 H&M_DATASET_NORMALIZED$/)).toBeVisible();
+  await expect(page.getByText("数据源未提供").first()).toBeVisible();
+});
+
+test("compare, add to cart and checkout", async ({ page }) => {
+  await mockApi(page);
+  await page.route("**/api/compare", route => route.fulfill({ json: { products } }));
+  await page.route("**/api/cart/add", route => route.fulfill({ json: { cart: [products[0]] } }));
+  await page.route("**/api/checkout", route => route.fulfill({ json: {
+    success: true, message: "ok", order: { order_id: "LOCAL-E2E", status: "simulated", items: [products[0]] }
+  }}));
+  await page.goto("/");
+  await page.getByLabel("加入对比").nth(0).click();
+  await page.getByLabel("加入对比").nth(1).click();
+  await page.getByRole("button", { name: "开始对比" }).click();
+  await expect(page.getByText("单品对比")).toBeVisible();
+  await page.getByRole("button", { name: "关闭" }).click();
+  await page.getByLabel("加入购物袋").first().click();
+  await page.getByLabel("打开购物袋").click();
+  await page.getByRole("button", { name: "模拟确认订单" }).click();
+  await expect(page.getByText("订单已确认")).toBeVisible();
+});
+
+test("restores persisted cart after reload", async ({ page }) => {
+  await mockApi(page, [products[0]]);
+  await page.goto("/");
+  await page.getByLabel("打开购物袋").click();
+  await expect(page.getByText("White Office Shirt").last()).toBeVisible();
+});
+
+test("uploads an image and renders streamed grounded recommendations", async ({ page }) => {
+  await mockApi(page);
+  await page.route("**/api/chat/stream", route => route.fulfill({
+    contentType: "text/event-stream",
+    body: [
+      'event: meta\ndata: {"session_id":"e2e","intent":"hybrid_search","slots":{"color":"White"}}\n\n',
+      `event: products\ndata: ${JSON.stringify({ items: [products[0]] })}\n\n`,
+      'event: message\ndata: {"delta":"已找到真实目录中的相似商品。"}\n\n',
+      'event: done\ndata: {"ok":true}\n\n'
+    ].join("")
+  }));
+  await page.goto("/");
+  await page.getByLabel("打开私人顾问").click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "reference.png", mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64")
+  });
+  await page.getByLabel("导购需求").fill("找白色通勤款");
+  await page.getByLabel("发送").click();
+  await expect(page.getByText("已找到真实目录中的相似商品。")).toBeVisible();
+});

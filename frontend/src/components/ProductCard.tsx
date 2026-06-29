@@ -42,7 +42,7 @@ export function ProductCard({ product, index, selected, onCompare, onAdd, onDeta
           <button onClick={onAdd} className="mt-0.5 text-muted transition-colors hover:text-accent"><Plus size={16} /></button>
         </div>
         {product.reason && <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted">{product.reason}</p>}
-        {typeof product.price === "number" && <p className="mt-2 font-mono text-[10px] text-muted">DATA PRICE {product.price.toFixed(4)}</p>}
+        {product.price_info && <p className="mt-2 font-mono text-[10px] text-muted">DATA PRICE {product.price_info.amount.toFixed(4)} · {product.price_info.currency}</p>}
       </div>
     </article>
   );

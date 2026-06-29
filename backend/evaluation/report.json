@@ -1,0 +1,16 @@
+{
+  "evaluated_at": "2026-06-29T13:12:01.511532+00:00",
+  "case_count": 62,
+  "retrieval": {
+    "cases": 40,
+    "recall_at_1": 1.0,
+    "recall_at_5": 1.0,
+    "recall_at_10": 1.0,
+    "mrr_at_10": 1.0,
+    "missing_article_ids": [],
+    "latency_ms_p50": 40.65899999841349,
+    "latency_ms_p95": 44.16040000069188
+  },
+  "intent_accuracy": 1.0,
+  "slot_accuracy": 1.0
+}

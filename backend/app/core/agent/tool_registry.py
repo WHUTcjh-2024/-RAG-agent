@@ -8,6 +8,7 @@ from langchain_core.tools import BaseTool, StructuredTool
 from PIL import Image
 
 from app.core.agent.memory import AgentMemoryStore
+from app.core.catalog_fields import enrich_commerce_fields
 
 
 class ToolRegistry:
@@ -53,7 +54,7 @@ class CommerceToolset:
         self.memory = memory
         products = list(text_retriever.products) + list(image_retriever.products)
         self.catalog = {
-            str(product["article_id"]): dict(product)
+            str(product["article_id"]): enrich_commerce_fields(product)
             for product in products
             if product.get("article_id")
         }
@@ -161,6 +162,11 @@ class CommerceToolset:
             "garment_group_name",
             "detail_desc",
             "image_path",
+            "sku",
+            "price",
+            "price_info",
+            "available_sizes",
+            "inventory_status",
         )
         products = []
         for product_id in unique_ids:

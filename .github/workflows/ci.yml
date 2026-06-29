@@ -24,5 +24,9 @@ jobs:
         working-directory: frontend
       - run: npm test
         working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:e2e
+        working-directory: frontend
       - run: npm run build
         working-directory: frontend
