@@ -69,15 +69,16 @@ class ShoppingAgentOrchestrator:
     @staticmethod
     def classify_intent(message: str, has_image: bool) -> str:
         text = message.strip()
-        if any(term in text for term in ("下单", "结算", "提交订单")):
+        folded = text.casefold()
+        if any(term in folded for term in ("下单", "结算", "提交订单", "checkout", "place order")):
             return "checkout"
-        if any(term in text for term in ("移出购物车", "删除购物车")):
+        if any(term in folded for term in ("移出购物车", "删除购物车", "remove from cart", "remove from bag")):
             return "remove_from_cart"
-        if any(term in text for term in ("加入购物车", "加到购物车", "加购")):
+        if any(term in folded for term in ("加入购物车", "加到购物车", "加购", "add to cart", "add to bag")):
             return "add_to_cart"
-        if any(term in text for term in ("查看购物车", "购物车里", "我的购物车")):
+        if any(term in folded for term in ("查看购物车", "购物车里", "我的购物车", "view cart", "show cart", "my cart")):
             return "view_cart"
-        if any(term in text for term in ("对比", "比较", "哪个好", "哪件更")):
+        if any(term in folded for term in ("对比", "比较", "哪个好", "哪件更", "compare", "which is better")):
             return "compare"
         if has_image and text:
             return "hybrid_search"
@@ -121,12 +122,14 @@ class ShoppingAgentOrchestrator:
         message: str,
         products: list[dict[str, Any]],
         slots: dict[str, Any],
+        language: str,
     ) -> str:
         intro, reasons = self.reason_generator.generate(
             user_query=message,
             products=products,
             slots=slots,
             history=self.memory.recent_history(session_id),
+            language=language,
         )
         for product in products:
             product_id = str(product["article_id"])
@@ -139,6 +142,7 @@ class ShoppingAgentOrchestrator:
         message: str,
         session_id: str,
         image_path: str | None = None,
+        language: str = "zh",
     ) -> AgentResponse:
         message = message.strip()
         if not message and not image_path:
@@ -204,13 +208,13 @@ class ShoppingAgentOrchestrator:
                 [str(product["article_id"]) for product in response.products],
             )
             response.answer = self._recommendation_answer(
-                session_id, message, response.products, slots
+                session_id, message, response.products, slots, language
             )
 
         elif intent == "compare":
             product_ids = self._resolve_product_ids(session_id, message)
             if len(product_ids) < 2:
-                response.answer = "请说明要对比的两到三件商品，例如“对比第1件和第3件”。"
+                response.answer = "Please specify two or three products, for example: compare item 1 and item 3." if language == "en" else "请说明要对比的两到三件商品，例如“对比第1件和第3件”。"
             else:
                 result = self._invoke(
                     traces,
@@ -218,12 +222,12 @@ class ShoppingAgentOrchestrator:
                     {"product_ids": product_ids[:3]},
                 )
                 response.comparison = result["products"]
-                response.answer = "已按真实商品字段整理对比结果。"
+                response.answer = "The comparison uses verified catalog fields." if language == "en" else "已按真实商品字段整理对比结果。"
 
         elif intent in {"add_to_cart", "remove_from_cart"}:
             product_ids = self._resolve_product_ids(session_id, message)
             if not product_ids:
-                response.answer = "请说明要操作哪件商品，例如“把第1件加入购物车”。"
+                response.answer = "Please specify a product, for example: add item 1 to the cart." if language == "en" else "请说明要操作哪件商品，例如“把第1件加入购物车”。"
             else:
                 tool = intent
                 result = self._invoke(
@@ -233,7 +237,7 @@ class ShoppingAgentOrchestrator:
                 )
                 response.cart = result["cart"]
                 response.answer = (
-                    "已加入购物车。" if intent == "add_to_cart" else "已从购物车移除。"
+                    ("Added to cart." if intent == "add_to_cart" else "Removed from cart.") if language == "en" else ("已加入购物车。" if intent == "add_to_cart" else "已从购物车移除。")
                 )
 
         elif intent == "view_cart":
@@ -242,15 +246,15 @@ class ShoppingAgentOrchestrator:
             )
             response.cart = result["cart"]
             response.answer = (
-                f"购物车中共有 {len(response.cart)} 件商品。"
+                (f"Your cart contains {len(response.cart)} item(s)." if language == "en" else f"购物车中共有 {len(response.cart)} 件商品。")
                 if response.cart
-                else "购物车目前为空。"
+                else ("Your cart is empty." if language == "en" else "购物车目前为空。")
             )
 
         elif intent == "checkout":
             result = self._invoke(traces, "checkout", {"session_id": session_id})
             response.order = result["order"]
-            response.answer = result["message"]
+            response.answer = ("Demo order created successfully. No payment was made." if language == "en" and result.get("success") else "Your cart is empty." if language == "en" else result["message"])
 
         self.memory.add_ai_message(session_id, response.answer)
         return response

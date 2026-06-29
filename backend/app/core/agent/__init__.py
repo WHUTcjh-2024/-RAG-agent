@@ -1,5 +1,11 @@
 """Lightweight LangChain-based shopping agent."""
 
-from app.core.agent.orchestrator import ShoppingAgentOrchestrator
-
 __all__ = ["ShoppingAgentOrchestrator"]
+
+
+def __getattr__(name: str):
+    if name == "ShoppingAgentOrchestrator":
+        from app.core.agent.orchestrator import ShoppingAgentOrchestrator
+
+        return ShoppingAgentOrchestrator
+    raise AttributeError(name)

@@ -102,3 +102,15 @@ test("uploads an image and renders streamed grounded recommendations", async ({ 
   await page.getByLabel("发送").click();
   await expect(page.getByText("已找到真实目录中的相似商品。")).toBeVisible();
 });
+
+test("switches the complete interface to English and persists the choice", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/");
+  await page.getByLabel("Language").click();
+  await expect(page.getByPlaceholder("Search names or descriptions")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Consult the stylist" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByPlaceholder("Search names or descriptions")).toBeVisible();
+  await page.getByLabel("Open personal stylist").click();
+  await expect(page.getByText("What are you dressing for?")).toBeVisible();
+});

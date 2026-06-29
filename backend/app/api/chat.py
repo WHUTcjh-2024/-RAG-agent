@@ -74,6 +74,7 @@ def remove_upload(path: str | None) -> None:
 async def chat(
     message: str = Form(default="", max_length=2000),
     session_id: str = Form(default="", max_length=100),
+    language: str = Form(default="zh", pattern="^(zh|en)$"),
     file: UploadFile | None = File(default=None),
 ) -> dict:
     actual_session_id = session_id.strip() or uuid4().hex
@@ -84,6 +85,7 @@ async def chat(
             message,
             actual_session_id,
             image_path,
+            language,
         )
         return response.to_dict()
     except ValueError as error:
@@ -102,6 +104,7 @@ def sse(event: str, payload: dict) -> str:
 async def chat_stream(
     message: str = Form(default="", max_length=2000),
     session_id: str = Form(default="", max_length=100),
+    language: str = Form(default="zh", pattern="^(zh|en)$"),
     file: UploadFile | None = File(default=None),
 ) -> StreamingResponse:
     actual_session_id = session_id.strip() or uuid4().hex
@@ -115,6 +118,7 @@ async def chat_stream(
                 message,
                 actual_session_id,
                 image_path,
+                language,
             )
             response = result.to_dict()
         except (FileNotFoundError, RuntimeError, ValueError) as error:

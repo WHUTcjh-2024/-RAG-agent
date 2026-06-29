@@ -61,11 +61,13 @@ export async function streamChat(
   message: string,
   sessionId: string,
   image: File | null,
+  language: "zh" | "en",
   handlers: StreamHandlers
 ): Promise<void> {
   const form = new FormData();
   form.append("message", message);
   form.append("session_id", sessionId);
+  form.append("language", language);
   if (image) form.append("file", image);
   const response = await ensureOk(
     await fetch("/api/chat/stream", { method: "POST", body: form })

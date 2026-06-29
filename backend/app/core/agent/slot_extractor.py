@@ -24,6 +24,9 @@ COLOR_TERMS = {
     "黄": "Yellow",
     "棕色": "Brown",
     "紫色": "Purple",
+    "white": "White", "black": "Black", "blue": "Blue", "red": "Red",
+    "green": "Green", "grey": "Grey", "gray": "Grey", "beige": "Beige",
+    "pink": "Pink", "yellow": "Yellow", "brown": "Brown", "purple": "Purple",
 }
 
 CATEGORY_TERMS = {
@@ -42,35 +45,39 @@ CATEGORY_TERMS = {
     "半身裙": "Skirt",
     "裙子": "Skirt",
     "上衣": "Top",
+    "dress": "Dress", "shirt": "Shirt", "t-shirt": "T-shirt", "jacket": "Jacket",
+    "sweater": "Sweater", "trousers": "Trousers", "pants": "Trousers",
+    "shorts": "Shorts", "skirt": "Skirt", "top": "Top",
 }
 
-STYLE_TERMS = ("简约", "休闲", "正式", "运动", "宽松", "修身", "复古", "通勤")
-SCENARIO_TERMS = ("上课", "通勤", "约会", "运动", "旅行", "面试", "日常", "聚会")
+STYLE_TERMS = ("简约", "休闲", "正式", "运动", "宽松", "修身", "复古", "通勤", "minimal", "casual", "formal", "sporty", "relaxed", "fitted", "vintage", "office")
+SCENARIO_TERMS = ("上课", "通勤", "约会", "运动", "旅行", "面试", "日常", "聚会", "class", "commute", "date", "workout", "travel", "interview", "daily", "party")
 
 
 class SlotExtractor:
     def extract(self, text: str) -> dict[str, Any]:
         normalized = text.strip()
+        folded = normalized.casefold()
         slots: dict[str, Any] = {}
         for term, value in sorted(COLOR_TERMS.items(), key=lambda item: -len(item[0])):
-            if term in normalized:
+            if term.casefold() in folded:
                 slots["color"] = value
                 break
         for term, value in sorted(CATEGORY_TERMS.items(), key=lambda item: -len(item[0])):
-            if term in normalized:
+            if term.casefold() in folded:
                 slots["category"] = value
                 break
-        styles = [term for term in STYLE_TERMS if term in normalized]
+        styles = [term for term in STYLE_TERMS if term.casefold() in folded]
         if styles:
             slots["style"] = styles
-        scenarios = [term for term in SCENARIO_TERMS if term in normalized]
+        scenarios = [term for term in SCENARIO_TERMS if term.casefold() in folded]
         if scenarios:
             slots["scenario"] = scenarios[-1]
 
         budget_match = re.search(
             r"(?:预算|不超过|最多|低于|以内)\s*(\d+(?:\.\d+)?)\s*(?:元|块|数据价)?",
             normalized,
-        ) or re.search(r"(\d+(?:\.\d+)?)\s*(?:元|块|数据价)", normalized)
+        ) or re.search(r"(\d+(?:\.\d+)?)\s*(?:元|块|数据价)", normalized) or re.search(r"(?:budget|under|max(?:imum)?)\s*\$?\s*(\d+(?:\.\d+)?)", folded)
         if budget_match:
             slots["budget"] = float(budget_match.group(1))
 
@@ -81,6 +88,7 @@ class SlotExtractor:
             )
             if match.strip("，。,. ")
         ]
+        avoid_clauses.extend(match.strip() for match in re.findall(r"(?:avoid|exclude|no)\s+([^,.;]+)", folded) if match.strip())
         avoid: list[str] = []
         for clause in avoid_clauses:
             translated = [

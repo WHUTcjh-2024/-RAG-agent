@@ -58,17 +58,17 @@ class GroundedRecommendationGenerator:
         return prompt | llm | self.parser
 
     @staticmethod
-    def _fallback(products: list[dict[str, Any]]) -> tuple[str, dict[str, str]]:
+    def _fallback(products: list[dict[str, Any]], language: str = "zh") -> tuple[str, dict[str, str]]:
         if not products:
-            return "暂时没有找到符合条件的商品，可以放宽颜色或品类限制。", {}
+            return ("No matching products were found. Try relaxing the color or category filters." if language == "en" else "暂时没有找到符合条件的商品，可以放宽颜色或品类限制。"), {}
         reasons: dict[str, str] = {}
         for product in products[:3]:
             article_id = str(product["article_id"])
             name = product.get("prod_name") or "这件商品"
             category = product.get("product_type_name") or "服装"
             color = product.get("colour_group_name") or "未标注颜色"
-            reasons[article_id] = f"{name} 属于 {category}，颜色为 {color}，与当前检索条件匹配。"
-        return "根据你的需求，我从真实商品库中筛出了这些候选。", reasons
+            reasons[article_id] = (f"{name} is a {category} in {color}, matching the current search criteria." if language == "en" else f"{name} 属于 {category}，颜色为 {color}，与当前检索条件匹配。")
+        return ("I selected these candidates from the real product catalog." if language == "en" else "根据你的需求，我从真实商品库中筛出了这些候选。"), reasons
 
     def generate(
         self,
@@ -76,9 +76,10 @@ class GroundedRecommendationGenerator:
         products: list[dict[str, Any]],
         slots: dict[str, Any],
         history: list[dict[str, str]],
+        language: str = "zh",
     ) -> tuple[str, dict[str, str]]:
         if not products or self.chain is None:
-            return self._fallback(products)
+            return self._fallback(products, language)
 
         allowed = {str(product["article_id"]) for product in products}
         safe_products = [
@@ -103,6 +104,7 @@ class GroundedRecommendationGenerator:
             output = self.chain.invoke(
                 {
                     "user_query": user_query,
+                    "response_language": "English" if language == "en" else "中文",
                     "slots": json.dumps(slots, ensure_ascii=False),
                     "history": json.dumps(history[-6:], ensure_ascii=False),
                     "products": json.dumps(safe_products, ensure_ascii=False),
@@ -115,7 +117,7 @@ class GroundedRecommendationGenerator:
                 if item.article_id in allowed and item.article_id not in reasons:
                     reasons[item.article_id] = item.reason
             if not reasons:
-                return self._fallback(products)
+                return self._fallback(products, language)
             return output.intro, reasons
         except Exception:
-            return self._fallback(products)
+            return self._fallback(products, language)

@@ -1,20 +1,22 @@
 import { ArrowDownRight, MessageCircle } from "lucide-react";
 import { productImage } from "../api/client";
 import type { Product } from "../types";
+import { useTranslation } from "../i18n";
 
 export function Hero({ products, total, onStylist }: { products: Product[]; total: number; onStylist: () => void }) {
+  const { t } = useTranslation();
   const primary = products[0];
   const secondary = products[1];
   return (
     <section className="hero-grid border-b border-ink/10">
       <div className="flex min-h-[620px] flex-col justify-between bg-[#ded9d0] p-7 lg:p-12">
-        <div className="flex items-center justify-between text-[9px] uppercase tracking-[.2em] text-muted"><span>The personal edit</span><span>{total.toLocaleString()} pieces</span></div>
+        <div className="flex items-center justify-between text-[9px] uppercase tracking-[.2em] text-muted"><span>{t("personalEdit")}</span><span>{total.toLocaleString()} {t("pieces")}</span></div>
         <div className="max-w-xl py-12">
-          <p className="mb-5 font-mono text-[9px] uppercase tracking-[.22em] text-accent">Curated for real life</p>
-          <h1 className="font-display text-[clamp(54px,7vw,104px)] leading-[.88] tracking-[-.055em]">Quiet pieces.<br />Clear point<br />of view.</h1>
-          <p className="mt-7 max-w-full break-all text-sm leading-6 text-[#57534d] sm:max-w-md sm:break-normal">让私人顾问从 5,000 件真实商品中，按你的场景、颜色与参考图片建立专属衣橱提案。</p>
+          <p className="mb-5 font-mono text-[9px] uppercase tracking-[.22em] text-accent">{t("curated")}</p>
+          <h1 className="whitespace-pre-line font-display text-[clamp(54px,7vw,104px)] leading-[.88] tracking-[-.055em]">{t("heroTitle")}</h1>
+          <p className="mt-7 max-w-full text-sm leading-6 text-[#57534d] sm:max-w-md">{t("heroCopy")}</p>
           <button onClick={onStylist} className="mt-8 inline-flex items-center gap-3 border-b border-ink pb-2 text-[11px] uppercase tracking-[.18em] transition-colors hover:border-accent hover:text-accent">
-            <MessageCircle size={15} strokeWidth={1.4} /> Consult the stylist
+            <MessageCircle size={15} strokeWidth={1.4} /> {t("consult")}
           </button>
         </div>
         <div className="flex items-center justify-between border-t border-ink/15 pt-4 text-[10px] text-muted"><span>Text · Image · Context</span><ArrowDownRight size={16} /></div>

@@ -5,12 +5,13 @@ GROUNDED_RECOMMENDATION_SYSTEM = """
 2. 推荐理由只能引用候选商品 JSON 中明确提供的名称、品类、颜色、描述和检索分数。
 3. 不得声称商品具有输入中没有的材质、库存、价格、折扣、尺码或品牌信息。
 4. 若信息不足，明确说信息不足，不要补充想象内容。
-5. 使用简洁、自然、商业导购风格的中文。
+5. 严格使用指定的回复语言（中文或 English），保持简洁、自然的商业导购风格。
 {format_instructions}
 """.strip()
 
 GROUNDED_RECOMMENDATION_HUMAN = """
 用户需求：{user_query}
+回复语言：{response_language}
 当前偏好槽位：{slots}
 最近对话：{history}
 候选商品 JSON：{products}

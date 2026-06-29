@@ -33,6 +33,16 @@ def test_preferences_drive_semantics_budget_and_exclusions() -> None:
     assert structured_match_score(product, {"category": "Shirt"}) == 1.0
 
 
+def test_english_preferences_are_structured() -> None:
+    slots = SlotExtractor().extract("A white shirt for a casual commute, budget 0.06, avoid blue")
+    assert slots["color"] == "White"
+    assert slots["category"] == "Shirt"
+    assert "casual" in slots["style"]
+    assert slots["scenario"] == "commute"
+    assert slots["budget"] == 0.06
+    assert "Blue" in slots["avoid"]
+
+
 def test_memory_survives_store_recreation(tmp_path: Path) -> None:
     database = tmp_path / "sessions.db"
     first = AgentMemoryStore(database)
