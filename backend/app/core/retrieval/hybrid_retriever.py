@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from app.core.retrieval.filters import product_matches_filters
+from app.core.retrieval.filters import product_matches_filters, structured_match_score
 from app.core.retrieval.image_retriever import ImageRetriever
 from app.core.retrieval.text_retriever import TextRetriever
 
@@ -105,9 +105,18 @@ class HybridRetriever:
         text_scores = normalize_cosine(text_raw)
         image_scores = normalize_cosine(image_raw)
 
-        # Candidates have already passed every hard filter. With no filters,
-        # the condition is vacuously satisfied, keeping the weighted score calibrated.
-        structured_scores = np.ones(total_candidates, dtype=np.float32)
+        # Exact structured matches score above partial matches. With no structured
+        # request this component is zero instead of adding a constant to every item.
+        structured_scores = np.asarray(
+            [
+                structured_match_score(
+                    self.image_retriever.products[self.image_positions[article_id]],
+                    applied_filters,
+                )
+                for article_id in candidate_ids
+            ],
+            dtype=np.float32,
+        )
         popularity_scores = normalize_popularity(
             np.asarray(
                 [

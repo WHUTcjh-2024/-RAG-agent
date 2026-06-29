@@ -54,6 +54,7 @@ def main() -> int:
                 garment_group_name TEXT NOT NULL DEFAULT '',
                 detail_desc TEXT NOT NULL DEFAULT '',
                 image_path TEXT NOT NULL,
+                price REAL,
                 popularity_score REAL NOT NULL DEFAULT 0,
                 text_profile TEXT NOT NULL
             );
@@ -79,6 +80,7 @@ def main() -> int:
             "garment_group_name",
             "detail_desc",
             "image_path",
+            "price",
             "popularity_score",
             "text_profile",
         ]
@@ -87,7 +89,9 @@ def main() -> int:
             f"INSERT INTO products ({','.join(columns)}) VALUES ({placeholders})",
             [
                 tuple(
-                    float(row.get(column) or 0)
+                    (float(row[column]) if row.get(column) else None)
+                    if column == "price"
+                    else float(row.get(column) or 0)
                     if column == "popularity_score"
                     else row.get(column, "")
                     for column in columns

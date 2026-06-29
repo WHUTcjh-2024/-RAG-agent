@@ -62,34 +62,59 @@ class SlotExtractor:
                 break
         styles = [term for term in STYLE_TERMS if term in normalized]
         if styles:
-            slots["style"] = styles[-1]
+            slots["style"] = styles
         scenarios = [term for term in SCENARIO_TERMS if term in normalized]
         if scenarios:
             slots["scenario"] = scenarios[-1]
 
         budget_match = re.search(
-            r"(?:预算|不超过|最多|低于|以内)?\s*(\d+(?:\.\d+)?)\s*(?:元|块)",
+            r"(?:预算|不超过|最多|低于|以内)\s*(\d+(?:\.\d+)?)\s*(?:元|块|数据价)?",
             normalized,
-        )
+        ) or re.search(r"(\d+(?:\.\d+)?)\s*(?:元|块|数据价)", normalized)
         if budget_match:
             slots["budget"] = float(budget_match.group(1))
 
-        avoid = [
+        avoid_clauses = [
             match.strip("，。,. ")
             for match in re.findall(
                 r"(?:不要|不想要|避免)([^，。,.；;]+)", normalized
             )
             if match.strip("，。,. ")
         ]
+        avoid: list[str] = []
+        for clause in avoid_clauses:
+            translated = [
+                value
+                for term, value in {**COLOR_TERMS, **CATEGORY_TERMS}.items()
+                if term in clause
+            ]
+            avoid.extend(translated or [clause])
+        avoid = list(dict.fromkeys(avoid))
         if avoid:
             slots["avoid"] = avoid
         return slots
 
     @staticmethod
-    def to_filters(slots: dict[str, Any]) -> dict[str, str]:
-        filters: dict[str, str] = {}
+    def to_filters(slots: dict[str, Any]) -> dict[str, Any]:
+        filters: dict[str, Any] = {}
         if slots.get("color"):
             filters["color"] = str(slots["color"])
         if slots.get("category"):
             filters["category"] = str(slots["category"])
+        if slots.get("budget") is not None:
+            filters["max_price"] = float(slots["budget"])
+        if slots.get("avoid"):
+            filters["exclude"] = list(slots["avoid"])
         return filters
+
+    @staticmethod
+    def enrich_query(text: str, slots: dict[str, Any]) -> str:
+        """Add soft preferences to the semantic query without inventing catalog facts."""
+        additions: list[str] = []
+        for key in ("style", "scenario"):
+            value = slots.get(key)
+            values = value if isinstance(value, list) else [value]
+            for item in values:
+                if item and str(item) not in additions:
+                    additions.append(str(item))
+        return " ".join([text.strip(), *additions]).strip()

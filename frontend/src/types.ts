@@ -8,6 +8,8 @@ export interface Product {
   detail_desc?: string;
   image_path?: string;
   image_url?: string;
+  price?: number | null;
+  popularity_score?: number;
   score?: number;
   reason?: string;
   text_score?: number;
@@ -34,3 +36,28 @@ export interface Order {
 }
 
 export type Slots = Record<string, string | number | string[]>;
+
+export interface ProductPage {
+  page: number;
+  page_size: number;
+  total: number;
+  items: Product[];
+}
+
+export interface ProductFacets {
+  categories: string[];
+  colors: string[];
+  index_groups: string[];
+  price_range: [number, number] | null;
+}
+
+export interface ProductQuery {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  category?: string;
+  color?: string;
+  indexGroup?: string;
+  maxPrice?: number;
+  sort?: "article_id" | "name" | "popular";
+}

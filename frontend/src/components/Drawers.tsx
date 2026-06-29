@@ -74,3 +74,19 @@ export function CompareDrawer({ open, products, onClose }: { open: boolean; prod
     </Shell>
   );
 }
+
+export function ProductDetailDrawer({ open, product, onClose, onAdd }: { open: boolean; product: Product | null; onClose: () => void; onAdd: (id: string) => void }) {
+  return (
+    <Shell open={open} title="商品详情" onClose={onClose}>
+      {product && <div>
+        <img src={productImage(product)} className="aspect-[3/4] w-full bg-canvas object-cover" alt={product.prod_name} />
+        <p className="mt-5 font-mono text-[10px] text-muted">{product.article_id}</p>
+        <h3 className="mt-2 font-display text-3xl">{product.prod_name}</h3>
+        <p className="mt-3 text-xs text-muted">{product.product_type_name} · {product.colour_group_name} · {product.garment_group_name}</p>
+        <p className="mt-6 text-sm leading-7">{product.detail_desc || "暂无商品描述"}</p>
+        {typeof product.price === "number" && <p className="mt-5 text-xs text-muted">数据集价格：{product.price.toFixed(6)}</p>}
+        <button onClick={() => onAdd(product.article_id)} className="mt-8 w-full bg-accent px-5 py-4 text-xs uppercase tracking-[0.2em] text-white">加入购物袋</button>
+      </div>}
+    </Shell>
+  );
+}

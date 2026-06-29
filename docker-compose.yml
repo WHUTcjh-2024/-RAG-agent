@@ -1,0 +1,16 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      IMAGE_DEVICE: cpu
+      SESSION_DB_PATH: /app/data/sqlite/sessions.db
+    volumes:
+      - ./backend/data:/app/data
+    ports:
+      - "18000:18000"
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"

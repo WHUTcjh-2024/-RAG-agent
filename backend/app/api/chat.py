@@ -14,12 +14,18 @@ from fastapi.responses import StreamingResponse
 from PIL import Image, UnidentifiedImageError
 
 from app.core.agent.orchestrator import ShoppingAgentOrchestrator
+from app.core.agent.memory import AgentMemoryStore
 from app.core.retrieval.hybrid_retriever import HybridRetriever
 from app.core.retrieval.image_retriever import ImageRetriever
 from app.core.retrieval.text_retriever import TextRetriever
 
 
 router = APIRouter(tags=["agent"])
+
+
+@lru_cache(maxsize=1)
+def get_memory() -> AgentMemoryStore:
+    return AgentMemoryStore()
 
 
 @lru_cache(maxsize=1)
@@ -35,6 +41,7 @@ def get_orchestrator() -> ShoppingAgentOrchestrator:
         text_retriever=text_retriever,
         image_retriever=image_retriever,
         hybrid_retriever=hybrid_retriever,
+        memory=get_memory(),
     )
 
 

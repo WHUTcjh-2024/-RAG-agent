@@ -1,4 +1,4 @@
-import type { Order, Product, Slots, ToolTrace } from "../types";
+import type { Order, Product, ProductFacets, ProductPage, ProductQuery, Slots, ToolTrace } from "../types";
 
 export const productImage = (product: Product): string => {
   if (product.image_url) return product.image_url;
@@ -18,16 +18,32 @@ async function ensureOk(response: Response): Promise<Response> {
   throw new Error(detail);
 }
 
-export async function fetchProducts(pageSize = 8): Promise<Product[]> {
+export function buildProductQuery(query: ProductQuery = {}): string {
   const params = new URLSearchParams({
-    page: "1",
-    page_size: String(pageSize),
-    group: "Garment",
-    index_group: "Ladieswear"
+    page: String(query.page || 1),
+    page_size: String(query.pageSize || 12),
+    sort: query.sort || "popular"
   });
+  if (query.search) params.set("search", query.search);
+  if (query.category) params.set("category", query.category);
+  if (query.color) params.set("color", query.color);
+  if (query.indexGroup) params.set("index_group", query.indexGroup);
+  if (typeof query.maxPrice === "number") params.set("max_price", String(query.maxPrice));
+  return params.toString();
+}
+
+export async function fetchProducts(query: ProductQuery = {}): Promise<ProductPage> {
+  const params = buildProductQuery(query);
   const response = await ensureOk(await fetch(`/api/products?${params}`));
-  const payload = await response.json();
-  return payload.items;
+  return response.json();
+}
+
+export async function fetchProduct(id: string): Promise<Product> {
+  return (await ensureOk(await fetch(`/api/products/${encodeURIComponent(id)}`))).json();
+}
+
+export async function fetchFacets(): Promise<ProductFacets> {
+  return (await ensureOk(await fetch("/api/products/facets"))).json();
 }
 
 type StreamHandlers = {
@@ -109,6 +125,11 @@ export const removeCart = (sessionId: string, productId: string) =>
   postJson<{ cart: Product[] }>("/api/cart/remove", {
     session_id: sessionId,
     product_id: productId
+  });
+
+export const fetchSession = (sessionId: string) =>
+  postJson<{ session_id: string; slots: Slots; cart: Product[]; history: { role: "user" | "assistant"; content: string }[] }>("/api/session", {
+    session_id: sessionId
   });
 
 export const checkout = (sessionId: string) =>

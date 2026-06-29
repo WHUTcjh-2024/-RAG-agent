@@ -58,6 +58,7 @@ def main() -> int:
         output["article_id"] = article_id
         output["image_path"] = image_path
         output["popularity_score"] = clean_text(row.get("popularity_score")) or "0"
+        output["price"] = clean_text(row.get("price"))
         cleaned.append(output)
         seen.add(article_id)
 

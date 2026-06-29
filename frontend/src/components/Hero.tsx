@@ -2,13 +2,13 @@ import { ArrowDownRight, MessageCircle } from "lucide-react";
 import { productImage } from "../api/client";
 import type { Product } from "../types";
 
-export function Hero({ products, onStylist }: { products: Product[]; onStylist: () => void }) {
+export function Hero({ products, total, onStylist }: { products: Product[]; total: number; onStylist: () => void }) {
   const primary = products[0];
   const secondary = products[1];
   return (
     <section className="hero-grid border-b border-ink/10">
       <div className="flex min-h-[620px] flex-col justify-between bg-[#ded9d0] p-7 lg:p-12">
-        <div className="flex items-center justify-between text-[9px] uppercase tracking-[.2em] text-muted"><span>The personal edit</span><span>01 / 26</span></div>
+        <div className="flex items-center justify-between text-[9px] uppercase tracking-[.2em] text-muted"><span>The personal edit</span><span>{total.toLocaleString()} pieces</span></div>
         <div className="max-w-xl py-12">
           <p className="mb-5 font-mono text-[9px] uppercase tracking-[.22em] text-accent">Curated for real life</p>
           <h1 className="font-display text-[clamp(54px,7vw,104px)] leading-[.88] tracking-[-.055em]">Quiet pieces.<br />Clear point<br />of view.</h1>

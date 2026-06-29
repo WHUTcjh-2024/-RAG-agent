@@ -127,6 +127,11 @@ def test_chat_api_and_sse_tool_trace(tmp_path: Path, monkeypatch) -> None:
         assert payload["products"][0]["article_id"] == "0000000001"
         assert payload["tool_trace"][-1]["tool"] == "search_products_by_text"
 
+        restored = client.post("/api/session", json={"session_id": "api-agent"})
+        assert restored.status_code == 200
+        assert restored.json()["slots"] == {"color": "Red", "category": "Shirt"}
+        assert restored.json()["history"]
+
         stream = client.post(
             "/api/chat/stream",
             data={"message": "查看购物车", "session_id": "api-agent"},

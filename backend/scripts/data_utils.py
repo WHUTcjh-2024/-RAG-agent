@@ -27,6 +27,7 @@ PRODUCT_FIELDS = (
     "garment_group_name",
     "detail_desc",
     "image_path",
+    "price",
     "popularity_score",
 )
 

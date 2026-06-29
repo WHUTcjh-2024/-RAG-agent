@@ -3,7 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.api.chat import get_orchestrator
+from app.api.chat import get_memory, get_orchestrator
+from app.db.database import connect, product_to_dict
 
 
 router = APIRouter(tags=["commerce"])
@@ -55,6 +56,30 @@ def remove_from_cart(request: CartRequest) -> dict:
 @router.post("/cart")
 def view_cart(request: SessionRequest) -> dict:
     return invoke("view_cart", {"session_id": request.session_id})
+
+
+@router.post("/session")
+def session_state(request: SessionRequest) -> dict:
+    memory = get_memory()
+    state = memory.get(request.session_id)
+    cart: list[dict] = []
+    if state.cart:
+        placeholders = ",".join("?" for _ in state.cart)
+        try:
+            with connect() as connection:
+                rows = connection.execute(
+                    f"SELECT * FROM products WHERE article_id IN ({placeholders})", state.cart
+                ).fetchall()
+            by_id = {row["article_id"]: product_to_dict(row) for row in rows}
+            cart = [by_id[item] for item in state.cart if item in by_id]
+        except FileNotFoundError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+    return {
+        "session_id": request.session_id,
+        "slots": dict(state.slots),
+        "cart": cart,
+        "history": memory.recent_history(request.session_id, limit=50),
+    }
 
 
 @router.post("/checkout")

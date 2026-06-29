@@ -18,6 +18,7 @@ PROFILE_FIELDS = (
     ("department_name", "部门"),
     ("section_name", "分区"),
     ("detail_desc", "商品描述"),
+    ("price", "数据集价格"),
 )
 
 

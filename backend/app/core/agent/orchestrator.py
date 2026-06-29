@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.agent.memory import AgentMemoryStore
+from app.core.agent.planner import AgentPlanner
 from app.core.agent.slot_extractor import SlotExtractor
 from app.core.agent.tool_registry import CommerceToolset, ToolRegistry
 from app.core.llm import GroundedRecommendationGenerator
@@ -63,6 +64,7 @@ class ShoppingAgentOrchestrator:
             memory=self.memory,
         )
         self.registry: ToolRegistry = self.toolset.build_registry()
+        self.planner = AgentPlanner(self.registry.tools)
 
     @staticmethod
     def classify_intent(message: str, has_image: bool) -> str:
@@ -154,7 +156,12 @@ class ShoppingAgentOrchestrator:
         else:
             slots = dict(self.memory.get(session_id).slots)
         filters = self.slot_extractor.to_filters(slots)
-        intent = self.classify_intent(message, bool(image_path))
+        retrieval_query = self.slot_extractor.enrich_query(message, slots)
+        intent = self.planner.choose(
+            message,
+            bool(image_path),
+            lambda: self.classify_intent(message, bool(image_path)),
+        )
         response = AgentResponse(
             session_id=session_id,
             intent=intent,
@@ -169,7 +176,7 @@ class ShoppingAgentOrchestrator:
                     traces,
                     "hybrid_search",
                     {
-                        "query": message,
+                        "query": retrieval_query,
                         "image_path": str(image_path),
                         "filters": filters,
                         "top_k": 5,
@@ -189,7 +196,7 @@ class ShoppingAgentOrchestrator:
                 result = self._invoke(
                     traces,
                     "search_products_by_text",
-                    {"query": message, "filters": filters, "top_k": 5},
+                    {"query": retrieval_query, "filters": filters, "top_k": 5},
                 )
             response.products = result["results"]
             self.memory.set_last_results(

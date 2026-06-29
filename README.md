@@ -1,6 +1,6 @@
 # 基于 RAG 的多模态电商智能导购 Agent
 
-本项目是一个完全本地运行的服装/穿搭导购 Demo。它使用 H&M 公开商品图文数据，支持文本检索、图片检索、图文融合检索、轻量 LangChain Agent、多轮偏好、商品对比、购物车和模拟下单。
+本项目是一个可完全本地运行的服装/穿搭导购 Demo。它使用 H&M 公开商品、图片与交易数据，支持文本检索、图片检索、图文融合检索、LangChain 工具调用、多轮偏好、持久购物车、商品对比和模拟下单。配置 LLM 后由模型选择工具；未配置时使用确定性离线规划器。
 
 ## 当前数据规模
 
@@ -40,6 +40,16 @@ python backend\scripts\clean_articles.py
 python backend\scripts\build_product_profiles.py
 python backend\scripts\build_sqlite.py
 ```
+
+为现有样本加入真实交易热度和平均价格（流式读取 ZIP，不做全量解压）：
+
+```powershell
+python backend\scripts\enrich_transactions.py `
+  --zip_path D:\datasets\hm_raw\h-and-m-personalized-fashion-recommendations.zip
+python backend\scripts\build_sqlite.py
+```
+
+H&M 交易表中的 `price` 是数据集归一化价格，不应解释为人民币。预算过滤使用该原始单位；没有真实价格的商品不会被视为满足预算。
 
 验证：
 
@@ -105,7 +115,7 @@ $env:LLM_API_KEY="your-api-key"
 $env:LLM_MODEL="your-model-name"
 ```
 
-LLM 只接收检索候选商品，商品卡片由真实目录生成；模型返回的非候选商品 ID 会被丢弃。
+LLM 可选择允许的 LangChain 工具，并只接收检索候选商品；所有工具参数仍由服务端校验，商品卡片由真实目录生成，模型返回的非候选商品 ID 会被丢弃。
 
 ## 7. 测试
 
@@ -120,13 +130,25 @@ python backend\scripts\validate_real_retrieval.py `
   --device cpu
 
 cd frontend
+npm test
 npm run build
 ```
+
+## 8. Docker 部署
+
+确保 `backend/data` 中已有 SQLite、向量索引和样本图片，然后执行：
+
+```powershell
+docker compose up --build
+```
+
+前端地址为 <http://127.0.0.1:5173>，后端地址为 <http://127.0.0.1:18000>。会话、偏好与购物车保存在 `backend/data/sqlite/sessions.db`，服务重启后仍可恢复。
 
 ## 主要接口
 
 - `GET /api/products`
 - `GET /api/products/{article_id}`
+- `GET /api/products/facets`
 - `POST /api/search/text`
 - `POST /api/search/image`
 - `POST /api/search/hybrid`
@@ -135,6 +157,8 @@ npm run build
 - `POST /api/compare`
 - `POST /api/cart/add`
 - `POST /api/cart/remove`
+- `POST /api/cart`
+- `POST /api/session`
 - `POST /api/checkout`
 
 ## 数据与 Git 安全

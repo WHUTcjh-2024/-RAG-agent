@@ -12,7 +12,7 @@ from app.api.search import router as search_router
 
 app = FastAPI(
     title="RAG Multimodal Shopping Agent",
-    version="0.2.0-stage2",
+    version="1.0.0",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -32,5 +32,15 @@ app.mount("/media", StaticFiles(directory=IMAGE_DIR), name="media")
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "stage": "text-retrieval"}
+def health() -> dict:
+    data_dir = Path(__file__).resolve().parents[1] / "data"
+    checks = {
+        "catalog": (data_dir / "sqlite" / "app.db").is_file(),
+        "text_index": (data_dir / "vector_store" / "text" / "embeddings.npy").is_file(),
+        "image_index": (data_dir / "vector_store" / "image" / "embeddings.npy").is_file(),
+    }
+    return {
+        "status": "ready" if all(checks.values()) else "degraded",
+        "version": app.version,
+        "checks": checks,
+    }

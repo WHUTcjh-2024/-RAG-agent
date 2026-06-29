@@ -17,6 +17,8 @@ def list_products(
     group: str | None = Query(default=None),
     index_group: str | None = Query(default=None),
     search: str | None = Query(default=None, max_length=200),
+    max_price: float | None = Query(default=None, ge=0),
+    sort: str = Query(default="article_id", pattern="^(article_id|name|popular)$"),
 ) -> dict:
     clauses: list[str] = []
     parameters: list[object] = []
@@ -36,6 +38,9 @@ def list_products(
         clauses.append("(prod_name LIKE ? OR detail_desc LIKE ?)")
         value = f"%{search.strip()}%"
         parameters.extend((value, value))
+    if max_price is not None:
+        clauses.append("price IS NOT NULL AND price <= ?")
+        parameters.append(max_price)
     where = " WHERE " + " AND ".join(clauses) if clauses else ""
     offset = (page - 1) * page_size
     try:
@@ -43,10 +48,15 @@ def list_products(
             total = connection.execute(
                 "SELECT COUNT(*) FROM products" + where, parameters
             ).fetchone()[0]
+            order_by = {
+                "article_id": "article_id",
+                "name": "prod_name COLLATE NOCASE, article_id",
+                "popular": "popularity_score DESC, article_id",
+            }[sort]
             rows = connection.execute(
                 "SELECT * FROM products"
                 + where
-                + " ORDER BY article_id LIMIT ? OFFSET ?",
+                + f" ORDER BY {order_by} LIMIT ? OFFSET ?",
                 [*parameters, page_size, offset],
             ).fetchall()
     except FileNotFoundError as error:
@@ -57,6 +67,32 @@ def list_products(
         "total": total,
         "items": [product_to_dict(row) for row in rows],
     }
+
+
+@router.get("/products/facets")
+def product_facets() -> dict:
+    try:
+        with connect() as connection:
+            def values(column: str) -> list[str]:
+                return [
+                    row[0]
+                    for row in connection.execute(
+                        f"SELECT DISTINCT {column} FROM products "
+                        f"WHERE {column} <> '' ORDER BY {column}"
+                    ).fetchall()
+                ]
+
+            price = connection.execute(
+                "SELECT MIN(price), MAX(price) FROM products WHERE price IS NOT NULL"
+            ).fetchone()
+            return {
+                "categories": values("product_type_name"),
+                "colors": values("colour_group_name"),
+                "index_groups": values("index_group_name"),
+                "price_range": [price[0], price[1]] if price[0] is not None else None,
+            }
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 @router.get("/products/{article_id}")

@@ -2,8 +2,8 @@ import { create } from "zustand";
 import type { Message, Order, Product, Slots, ToolTrace } from "../types";
 
 const sessionId =
-  sessionStorage.getItem("atelier-session") || `web-${crypto.randomUUID()}`;
-sessionStorage.setItem("atelier-session", sessionId);
+  localStorage.getItem("atelier-session") || `web-${crypto.randomUUID()}`;
+localStorage.setItem("atelier-session", sessionId);
 
 type AppState = {
   sessionId: string;
@@ -17,6 +17,7 @@ type AppState = {
   order: Order | null;
   streaming: boolean;
   addMessage: (message: Message) => void;
+  setMessages: (messages: Message[]) => void;
   appendAssistant: (delta: string) => void;
   setProducts: (products: Product[]) => void;
   addTrace: (trace: ToolTrace) => void;
@@ -41,6 +42,7 @@ export const useAppStore = create<AppState>((set) => ({
   order: null,
   streaming: false,
   addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
+  setMessages: (messages) => set({ messages }),
   appendAssistant: (delta) =>
     set((state) => {
       const messages = [...state.messages];
